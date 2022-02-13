@@ -1,6 +1,6 @@
 const { Engine, Render, Runner, World, Bodies, Body, Events } = Matter;
-const cellsHorizontal = 14;
-const cellsVertical = 13;
+const cellsHorizontal = 3;
+const cellsVertical = 3;
 const width = window.innerWidth;
 const height = window.innerHeight;
 
@@ -16,7 +16,7 @@ const render = Render.create({
   engine: engine,
   options: {
     showAngleIndicator: false,
-    wireframes: true, // it's true by default
+    wireframes: false, // it's true by default
     width,
     height
   }
@@ -126,7 +126,7 @@ horizontals.forEach((row, rowIndex) => {
       rowIndex * unitLengthY + unitLengthY,
       unitLengthX,
       5,
-      { label: 'wall', isStatic: true }
+      { label: 'wall', isStatic: true, render: { fillStyle: 'green' } }
     );
     World.add(world, wall);
   });
@@ -142,7 +142,7 @@ verticals.forEach((row, rowIndex) => {
       rowIndex * unitLengthY + unitLengthY / 2,
       5,
       unitLengthY,
-      { label: 'wall', isStatic: true }
+      { label: 'wall', isStatic: true, render: { fillStyle: 'red' } }
     );
     World.add(world, wall);
   });
@@ -154,15 +154,16 @@ const goal = Bodies.rectangle(
   height - unitLengthY / 2,
   unitLengthX * 0.7,
   unitLengthY * 0.7,
-  { isStatic: true, label: 'goal' }
+  { isStatic: true, label: 'goal', render: { fillStyle: 'blue' } }
 );
 World.add(world, goal);
 
 //Ball
-const ballRadius = Math.min(unitLengthX, unitLengthY) / 4;
+const ballRadius = Math.min(unitLengthX, unitLengthY) / 3;
 const ball = Bodies.circle(unitLengthX / 2, unitLengthY / 2, ballRadius, {
   isStatic: false,
-  label: 'ball'
+  label: 'ball',
+  render: { fillStyle: 'magenta' }
 });
 
 World.add(world, ball);
@@ -190,6 +191,7 @@ Events.on(engine, 'collisionStart', e => {
   e.pairs.forEach(collision => {
     const labels = ['ball', 'goal'];
     if (labels.includes(collision.bodyA.label) && labels.includes(collision.bodyB.label)) {
+      document.querySelector('.winner').classList.remove('hidden');
       world.gravity.y = 1;
       world.bodies.forEach(body => {
         if (body.label === 'wall') {
