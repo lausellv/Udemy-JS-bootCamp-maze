@@ -1,11 +1,15 @@
-const { Engine, Render, Runner, World, Bodies } = Matter;
+const { Engine, Render, Runner, World, Bodies, Body, Events } = Matter;
+const cellsHorizontal = 14;
+const cellsVertical = 13;
+const width = window.innerWidth;
+const height = window.innerHeight;
 
-const cells = 3;
-const width = 600;
-const height = 600;
+const unitLengthX = width / cellsHorizontal;
+const unitLengthY = height / cellsVertical;
 
-const unitLength = width / cells;
 const engine = Engine.create();
+// changing the gravity
+engine.world.gravity.y = 0;
 const { world } = engine; // world is a snapshot of the images we have on the screen
 const render = Render.create({
   element: document.body, // this will be added to the body
@@ -44,20 +48,20 @@ const shuffle = array => {
   return array;
 };
 
-const grid = Array(cells) // rows
+const grid = Array(cellsVertical) // rows
   .fill(null)
-  .map(() => Array(cells).fill(false)); // columns
+  .map(() => Array(cellsHorizontal).fill(false)); // columns
 
-const verticals = Array(cells)
+const verticals = Array(cellsVertical)
   .fill(null)
-  .map(() => Array(cells - 1).fill(false));
+  .map(() => Array(cellsHorizontal - 1).fill(false));
 
-const horizontals = Array(cells - 1)
+const horizontals = Array(cellsVertical - 1)
   .fill(null)
-  .map(() => Array(cells).fill(false));
+  .map(() => Array(cellsHorizontal).fill(false));
 
-const startRow = Math.floor(Math.random() * cells);
-const startColumn = Math.floor(Math.random() * cells);
+const startRow = Math.floor(Math.random() * cellsVertical);
+const startColumn = Math.floor(Math.random() * cellsHorizontal);
 
 const stepThroughCell = (row, column) => {
   // if I have visited the cell at [row, column] return
@@ -78,7 +82,12 @@ const stepThroughCell = (row, column) => {
   // for each neighbor see if it out of bounds to make sure we don't go where we can't
   for (let neighbor of neighbors) {
     const [nextRow, nextColumn, direction] = neighbor;
-    if (nextRow < 0 || nextRow >= cells || nextColumn < 0 || nextColumn >= cells) {
+    if (
+      nextRow < 0 ||
+      nextRow >= cellsVertical ||
+      nextColumn < 0 ||
+      nextColumn >= cellsHorizontal
+    ) {
       continue; // if this condition is met , do nothing and move onto the next iteration
     }
     // if we have visited that neighbor , continue to next neighbor
@@ -113,11 +122,11 @@ horizontals.forEach((row, rowIndex) => {
       return;
     }
     const wall = Bodies.rectangle(
-      columnIndex * unitLength + unitLength / 2,
-      rowIndex * unitLength + unitLength,
-      unitLength,
+      columnIndex * unitLengthX + unitLengthX / 2,
+      rowIndex * unitLengthY + unitLengthY,
+      unitLengthX,
       5,
-      { isStatic: true }
+      { label: 'wall', isStatic: true }
     );
     World.add(world, wall);
   });
@@ -129,21 +138,64 @@ verticals.forEach((row, rowIndex) => {
       return;
     }
     const wall = Bodies.rectangle(
-      columnIndex * unitLength + unitLength,
-      rowIndex * unitLength + unitLength / 2,
+      columnIndex * unitLengthX + unitLengthX,
+      rowIndex * unitLengthY + unitLengthY / 2,
       5,
-      unitLength,
-      { isStatic: true }
+      unitLengthY,
+      { label: 'wall', isStatic: true }
     );
     World.add(world, wall);
   });
 });
 
+//Goal
 const goal = Bodies.rectangle(
-  width - unitLength / 2,
-  height - unitLength / 2,
-  unitLength * 0.7,
-  unitLength * 0.7,
-  { isStatic: true }
+  width - unitLengthX / 2,
+  height - unitLengthY / 2,
+  unitLengthX * 0.7,
+  unitLengthY * 0.7,
+  { isStatic: true, label: 'goal' }
 );
 World.add(world, goal);
+
+//Ball
+const ballRadius = Math.min(unitLengthX, unitLengthY) / 4;
+const ball = Bodies.circle(unitLengthX / 2, unitLengthY / 2, ballRadius, {
+  isStatic: false,
+  label: 'ball'
+});
+
+World.add(world, ball);
+
+document.addEventListener('keydown', e => {
+  const { x, y } = ball.velocity;
+
+  if (e.code === 'KeyW') {
+    console.log('move ball up');
+    Body.setVelocity(ball, { x, y: y - 5 });
+  } else if (e.code === 'KeyD') {
+    console.log('move ball right');
+    Body.setVelocity(ball, { x: x + 5, y });
+  } else if (e.code === 'KeyS') {
+    console.log('move ball down');
+    Body.setVelocity(ball, { x, y: y + 5 });
+  } else if (e.code === 'KeyA') {
+    console.log('move ball left');
+    Body.setVelocity(ball, { x: x - 5, y });
+  }
+});
+
+// win condition
+Events.on(engine, 'collisionStart', e => {
+  e.pairs.forEach(collision => {
+    const labels = ['ball', 'goal'];
+    if (labels.includes(collision.bodyA.label) && labels.includes(collision.bodyB.label)) {
+      world.gravity.y = 1;
+      world.bodies.forEach(body => {
+        if (body.label === 'wall') {
+          Body.setStatic(body, false);
+        }
+      });
+    }
+  });
+});
